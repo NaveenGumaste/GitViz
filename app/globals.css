@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark, .dark *));
+
+@theme {
+  --color-ink: #0d0d0d;
+  --color-paper: #f5f0e8;
+  --color-accent: #ff4d00;
+  --color-accent-muted: #ff4d0020;
+  --color-surface: #1a1a1a;
+  --color-surface-light: #efefef;
+  --color-muted: #6b6b6b;
+  --color-border: #e0dad0;
+  --color-border-dark: #2a2a2a;
+
+  --font-display: var(--font-display-face);
+  --font-body: var(--font-body-face);
+  --font-mono: var(--font-mono-face);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen overflow-x-hidden bg-paper font-body text-ink antialiased transition-colors dark:bg-ink dark:text-paper;
+  }
+
+  ::selection {
+    @apply bg-accent text-paper;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition:
+    background-color 400ms ease,
+    color 400ms ease,
+    border-color 400ms ease !important;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
