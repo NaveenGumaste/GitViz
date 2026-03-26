@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBranchSha, getRepoTree, resolveTreeFromDefaultBranch } from "@/lib/github";
 import { getGitHubToken, parseRepoQuery, parseTreeQuery, toGitHubErrorResponse } from "@/app/api/github/_utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {

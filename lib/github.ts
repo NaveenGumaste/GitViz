@@ -114,7 +114,7 @@ function createGitHubError(response: Response, body: unknown): GitHubApiError {
 
 async function requestJson(url: string, token?: string): Promise<unknown> {
   const response = await fetch(url, {
-    cache: "no-store",
+    ...(token ? { cache: "no-store" as const } : { next: { revalidate: 300 } }),
     headers: buildHeaders(token),
   });
 
@@ -238,14 +238,22 @@ export async function resolveTreeFromDefaultBranch(owner: string, repo: string, 
 }
 
 export async function getCommits(owner: string, repo: string, token?: string): Promise<Commit[]> {
+  const pages = await Promise.all(
+    Array.from({ length: 5 }, (_, index) =>
+      requestJson(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=100&page=${index + 1}`,
+        token,
+      ),
+    ),
+  );
+
   const commits: Commit[] = [];
 
-  for (let page = 1; page <= 5; page += 1) {
-    const raw = (await requestJson(
-      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=100&page=${page}`,
-      token,
-    )) as unknown;
-    const parsed = z.array(githubSchemas.commit).parse(raw) as GitHubCommitListItem[];
+  for (const page of pages) {
+    const parsed = z.array(githubSchemas.commit).parse(page) as GitHubCommitListItem[];
+    if (parsed.length === 0) {
+      break;
+    }
 
     for (const item of parsed) {
       const mapped = {
@@ -274,7 +282,7 @@ async function requestContributorStats(owner: string, repo: string, token?: stri
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const response = await fetch(url, {
-      cache: "no-store",
+      ...(token ? { cache: "no-store" as const } : { next: { revalidate: 300 } }),
       headers: buildHeaders(token),
     });
 

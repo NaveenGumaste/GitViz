@@ -65,14 +65,34 @@ const emptyErrors: Record<keyof RepoStoreData, string | null> = {
 const RouteErrorSchema = z.object({
   error: z.string(),
   code: z.string().optional(),
+  retryAfter: z.number().nullable().optional(),
 });
+
+class RouteRequestError extends Error {
+  readonly status: number;
+
+  readonly retryAfter?: number;
+
+  constructor(message: string, status: number, retryAfter?: number) {
+    super(message);
+    this.name = "RouteRequestError";
+    this.status = status;
+    this.retryAfter = retryAfter;
+  }
+}
+
+const inflightFetches = new Map<string, Promise<void>>();
 
 async function parseRouteResponse<T>(response: Response, schema: z.ZodType<T>): Promise<T> {
   const body: unknown = await response.json();
 
   if (!response.ok) {
     const parsedError = RouteErrorSchema.safeParse(body);
-    throw new Error(parsedError.success ? parsedError.data.error : `Request failed with status ${response.status}`);
+    throw new RouteRequestError(
+      parsedError.success ? parsedError.data.error : `Request failed with status ${response.status}`,
+      response.status,
+      parsedError.success ? (parsedError.data.retryAfter ?? undefined) : undefined,
+    );
   }
 
   return schema.parse(body);
@@ -95,8 +115,29 @@ function formatRequestError(error: unknown): string {
 }
 
 async function fetchRouteData<T>(url: string, schema: z.ZodType<T>): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
-  return parseRouteResponse(response, schema);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(url);
+
+    try {
+      return await parseRouteResponse(response, schema);
+    } catch (error) {
+      if (!(error instanceof RouteRequestError)) {
+        throw error;
+      }
+
+      const retryable = error.status === 202 || error.status === 429 || error.status >= 500;
+      const hasAttemptsLeft = attempt < 2;
+
+      if (!retryable || !hasAttemptsLeft) {
+        throw error;
+      }
+
+      const waitMs = error.retryAfter ? error.retryAfter * 1000 : 600 * 2 ** attempt;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  throw new Error("Request retries exhausted");
 }
 
 export const useRepoStore = create<RepoStoreState>((set, get) => ({
@@ -123,109 +164,123 @@ export const useRepoStore = create<RepoStoreState>((set, get) => ({
     await get().fetchAll(current.owner, current.repo);
   },
   fetchAll: async (owner, repo) => {
-    set({
-      currentRepo: { owner, repo },
-      isLoading: {
-        repoMeta: true,
-        tree: true,
-        commits: true,
-        commitCountsByDate: true,
-        contributors: true,
-        languages: true,
-      },
-      errors: emptyErrors,
-      ...emptyData,
-    });
+    const key = `${owner}/${repo}`;
+    const existing = inflightFetches.get(key);
 
-    try {
-      const baseParams = new URLSearchParams({ owner, repo });
-      const repoMeta = await fetchRouteData(`/api/github/repo?${baseParams.toString()}`, RepoMetaSchema);
-      const treeParams = new URLSearchParams({ owner, repo, branch: repoMeta.defaultBranch });
-
-      const [treeResult, commitsResult, contributorsResult, languagesResult] = await Promise.allSettled([
-        fetchRouteData(`/api/github/tree?${treeParams.toString()}`, TreeNodeSchema.array()),
-        fetchRouteData(`/api/github/commits?${baseParams.toString()}`, CommitSchema.array()),
-        fetchRouteData(`/api/github/contributors?${baseParams.toString()}`, ContributorSchema.array()),
-        fetchRouteData(`/api/github/languages?${baseParams.toString()}`, LanguagesSchema),
-      ]);
-
-      const nextData: RepoStoreData = {
-        repoMeta,
-        tree: null,
-        commits: null,
-        commitCountsByDate: {},
-        contributors: null,
-        languages: null,
-      };
-
-      const nextErrors: Record<keyof RepoStoreData, string | null> = {
-        repoMeta: null,
-        tree: null,
-        commits: null,
-        commitCountsByDate: null,
-        contributors: null,
-        languages: null,
-      };
-
-      if (treeResult.status === "fulfilled") {
-        nextData.tree = treeResult.value;
-      } else {
-        nextErrors.tree = formatRequestError(treeResult.reason);
-      }
-
-      if (commitsResult.status === "fulfilled") {
-        nextData.commits = commitsResult.value;
-        nextData.commitCountsByDate = buildCommitCounts(commitsResult.value);
-      } else {
-        nextErrors.commits = formatRequestError(commitsResult.reason);
-        nextErrors.commitCountsByDate = nextErrors.commits;
-      }
-
-      if (contributorsResult.status === "fulfilled") {
-        nextData.contributors = contributorsResult.value;
-      } else {
-        nextErrors.contributors = formatRequestError(contributorsResult.reason);
-      }
-
-      if (languagesResult.status === "fulfilled") {
-        nextData.languages = languagesResult.value;
-      } else {
-        nextErrors.languages = formatRequestError(languagesResult.reason);
-      }
-
-      set({
-        ...nextData,
-        errors: nextErrors,
-        isLoading: {
-          repoMeta: false,
-          tree: false,
-          commits: false,
-          commitCountsByDate: false,
-          contributors: false,
-          languages: false,
-        },
-      });
-    } catch (error) {
-      const message = formatRequestError(error);
-      set({
-        errors: {
-          repoMeta: message,
-          tree: message,
-          commits: message,
-          commitCountsByDate: message,
-          contributors: message,
-          languages: message,
-        },
-        isLoading: {
-          repoMeta: false,
-          tree: false,
-          commits: false,
-          commitCountsByDate: false,
-          contributors: false,
-          languages: false,
-        },
-      });
+    if (existing) {
+      return existing;
     }
+
+    const run = (async () => {
+      set({
+        currentRepo: { owner, repo },
+        isLoading: {
+          repoMeta: true,
+          tree: true,
+          commits: true,
+          commitCountsByDate: true,
+          contributors: true,
+          languages: true,
+        },
+        errors: emptyErrors,
+        ...emptyData,
+      });
+
+      try {
+        const baseParams = new URLSearchParams({ owner, repo });
+        const repoMeta = await fetchRouteData(`/api/github/repo?${baseParams.toString()}`, RepoMetaSchema);
+        const treeParams = new URLSearchParams({ owner, repo, branch: repoMeta.defaultBranch });
+
+        const [treeResult, commitsResult, contributorsResult, languagesResult] = await Promise.allSettled([
+          fetchRouteData(`/api/github/tree?${treeParams.toString()}`, TreeNodeSchema.array()),
+          fetchRouteData(`/api/github/commits?${baseParams.toString()}`, CommitSchema.array()),
+          fetchRouteData(`/api/github/contributors?${baseParams.toString()}`, ContributorSchema.array()),
+          fetchRouteData(`/api/github/languages?${baseParams.toString()}`, LanguagesSchema),
+        ]);
+
+        const nextData: RepoStoreData = {
+          repoMeta,
+          tree: null,
+          commits: null,
+          commitCountsByDate: {},
+          contributors: null,
+          languages: null,
+        };
+
+        const nextErrors: Record<keyof RepoStoreData, string | null> = {
+          repoMeta: null,
+          tree: null,
+          commits: null,
+          commitCountsByDate: null,
+          contributors: null,
+          languages: null,
+        };
+
+        if (treeResult.status === "fulfilled") {
+          nextData.tree = treeResult.value;
+        } else {
+          nextErrors.tree = formatRequestError(treeResult.reason);
+        }
+
+        if (commitsResult.status === "fulfilled") {
+          nextData.commits = commitsResult.value;
+          nextData.commitCountsByDate = buildCommitCounts(commitsResult.value);
+        } else {
+          nextErrors.commits = formatRequestError(commitsResult.reason);
+          nextErrors.commitCountsByDate = nextErrors.commits;
+        }
+
+        if (contributorsResult.status === "fulfilled") {
+          nextData.contributors = contributorsResult.value;
+        } else {
+          nextErrors.contributors = formatRequestError(contributorsResult.reason);
+        }
+
+        if (languagesResult.status === "fulfilled") {
+          nextData.languages = languagesResult.value;
+        } else {
+          nextErrors.languages = formatRequestError(languagesResult.reason);
+        }
+
+        set({
+          ...nextData,
+          errors: nextErrors,
+          isLoading: {
+            repoMeta: false,
+            tree: false,
+            commits: false,
+            commitCountsByDate: false,
+            contributors: false,
+            languages: false,
+          },
+        });
+      } catch (error) {
+        const message = formatRequestError(error);
+        set({
+          errors: {
+            repoMeta: message,
+            tree: message,
+            commits: message,
+            commitCountsByDate: message,
+            contributors: message,
+            languages: message,
+          },
+          isLoading: {
+            repoMeta: false,
+            tree: false,
+            commits: false,
+            commitCountsByDate: false,
+            contributors: false,
+            languages: false,
+          },
+        });
+      } finally {
+        inflightFetches.delete(key);
+      }
+    })();
+
+    inflightFetches.set(key, run);
+    return run;
   },
 }));
 
