@@ -5,7 +5,6 @@ import * as d3 from "d3";
 import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { cn, formatBytes } from "@/lib/utils";
 import type { TreeNode } from "@/lib/schemas/github";
 
@@ -142,6 +141,8 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
       .attr("viewBox", `0 0 ${size.width} ${size.height}`)
       .attr("width", size.width)
       .attr("height", size.height)
+      .attr("role", "img")
+      .attr("aria-label", "Repository radial file tree")
       .attr("preserveAspectRatio", "xMidYMid meet")
       .call(
         d3
@@ -290,6 +291,9 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
     <Card className="relative overflow-hidden">
       <div ref={containerRef} className="relative min-h-[760px]">
         <svg ref={svgRef} className="h-full w-full" />
+        <p className="sr-only" role="status" aria-live="polite">
+          Interactive radial file tree. Click folder nodes to collapse or expand repository sections.
+        </p>
 
         {hoveredNode ? (
           <div className="pointer-events-none absolute bottom-4 left-4 max-w-sm rounded-3xl border border-border bg-paper/95 p-4 text-ink shadow-xl backdrop-blur-sm dark:border-border-dark dark:bg-surface/95 dark:text-paper">

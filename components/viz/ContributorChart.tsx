@@ -37,6 +37,8 @@ interface ContributorTooltipProps {
 const BAR_COLORS = ["#ff4d00", "#ff6b6b", "#ff9248", "#ffb347", "#ffd166", "#f6ad55", "#e76f51", "#c77dff", "#6ee7b7", "#4f83ff"] as const;
 
 export function ContributorChart({ contributors, isLoading, error, onRetry }: ContributorChartProps): React.ReactNode {
+  const contributorCount = contributors?.length ?? 0;
+
   const data = useMemo(() => {
     if (!contributors) {
       return [];
@@ -77,7 +79,7 @@ export function ContributorChart({ contributors, isLoading, error, onRetry }: Co
           <h3 className="font-display text-3xl leading-tight tracking-[-0.04em] text-ink dark:text-paper">The top 10 contributors by total commits.</h3>
         </div>
         <div className="rounded-full border border-border bg-surface-light px-4 py-2 text-sm text-muted dark:border-border-dark dark:bg-paper/5 dark:text-paper/68">
-          {formatNumber(data.reduce((sum, entry) => sum + entry.total, 0))} commits total
+          Showing {data.length} of {formatNumber(contributorCount)} contributors
         </div>
       </div>
 
@@ -104,7 +106,7 @@ export function ContributorChart({ contributors, isLoading, error, onRetry }: Co
           ))}
         </div>
 
-        <div className="min-h-[520px]">
+        <div className="min-h-[520px]" role="img" aria-label={`Top ${data.length} contributors ranked by total commits`}>
           <ResponsiveContainer width="100%" height={Math.max(440, data.length * 56 + 48)}>
             <BarChart data={data} layout="vertical" margin={{ top: 12, right: 24, bottom: 12, left: 12 }} barCategoryGap={18}>
               <defs>
@@ -114,7 +116,14 @@ export function ContributorChart({ contributors, isLoading, error, onRetry }: Co
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="rgba(107,107,107,0.15)" strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" hide domain={[0, maxTotal]} />
+              <XAxis
+                type="number"
+                domain={[0, maxTotal]}
+                tick={{ fill: "currentColor", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => formatNumber(Number(value))}
+              />
               <YAxis type="category" dataKey="login" hide />
               <RechartsTooltip content={<ContributorTooltip />} cursor={{ fill: "rgba(255,77,0,0.06)" }} />
               <Bar dataKey="total" radius={[0, 18, 18, 0]} animationBegin={120} animationDuration={700} fill="url(#contributor-bar-gradient)">

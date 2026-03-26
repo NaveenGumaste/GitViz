@@ -71,6 +71,7 @@ export function CommitHeatmap({
   }, [resolvedTheme]);
 
   const cells = useMemo(() => buildCells(commitCountsByDate), [commitCountsByDate]);
+  const monthTicks = useMemo(() => buildMonthTicks(cells), [cells]);
   const totalCommits = useMemo(() => Object.values(commitCountsByDate).reduce((sum, value) => sum + value, 0), [commitCountsByDate]);
   const maxCount = useMemo(() => Math.max(1, ...cells.map((cell) => cell.count)), [cells]);
 
@@ -117,8 +118,25 @@ export function CommitHeatmap({
       </div>
 
       <div ref={containerRef} className="relative mt-8 min-h-[520px]">
-        <svg ref={svgRef} className="h-full w-full" viewBox={`0 0 ${size.width || 1000} ${size.height || 520}`} role="img" aria-label="Commit heatmap">
+        <svg
+          ref={svgRef}
+          className="h-full w-full"
+          viewBox={`0 0 ${size.width || 1000} ${size.height || 520}`}
+          role="img"
+          aria-label={`Commit heatmap for the last 52 weeks with ${formatNumber(totalCommits)} commits`}
+        >
           <g transform={`translate(36,24)`}>
+            {monthTicks.map((month) => (
+              <text
+                key={month.label + month.weekIndex}
+                x={month.weekIndex * (CELL_SIZE + CELL_GAP) + 42}
+                y={-8}
+                className="fill-muted text-[10px] font-medium uppercase tracking-[0.2em] dark:fill-paper/55"
+              >
+                {month.label}
+              </text>
+            ))}
+
             {dayLabels.map((label, index) => (
               <text
                 key={label}
@@ -165,13 +183,21 @@ export function CommitHeatmap({
 
         <div className="absolute right-4 top-4 rounded-[1.5rem] border border-border bg-paper/90 p-4 shadow-lg backdrop-blur-sm dark:border-border-dark dark:bg-surface/90">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/55">Legend</p>
-          <div className="mt-3 flex items-center gap-2 text-sm text-muted dark:text-paper/68">
-            <span className={cn("size-3 rounded-sm", resolvedTheme === "dark" ? "bg-[#2a2a2a]" : "bg-[#d7d0c5]")} />
-            <span>0</span>
-            <span className={cn("size-3 rounded-sm", resolvedTheme === "dark" ? "bg-[#3a2418]" : "bg-[#fff0e4]")} />
-            <span>Low</span>
-            <span className="size-3 rounded-sm bg-accent" />
-            <span>High</span>
+          <div className="mt-3 space-y-2 text-sm text-muted dark:text-paper/68">
+            <div
+              className={cn(
+                "h-3 w-36 rounded-full",
+                resolvedTheme === "dark"
+                  ? "bg-[linear-gradient(90deg,#2a2a2a_0%,#3a2418_35%,#ff4d00_100%)]"
+                  : "bg-[linear-gradient(90deg,#d7d0c5_0%,#fff0e4_35%,#ff4d00_100%)]",
+              )}
+              aria-hidden="true"
+            />
+            <div className="flex items-center justify-between">
+              <span>0</span>
+              <span>Low</span>
+              <span>High</span>
+            </div>
           </div>
         </div>
       </div>
@@ -184,6 +210,11 @@ interface HeatmapCell {
   count: number;
   weekIndex: number;
   dayIndex: number;
+}
+
+interface MonthTick {
+  weekIndex: number;
+  label: string;
 }
 
 const CELL_SIZE = 14;
@@ -207,6 +238,32 @@ function buildCells(commitCountsByDate: Record<string, number>): HeatmapCell[] {
       dayIndex: day.getDay(),
     };
   });
+}
+
+function buildMonthTicks(cells: HeatmapCell[]): MonthTick[] {
+  const seen = new Set<string>();
+  const formatter = new Intl.DateTimeFormat("en-US", { month: "short" });
+
+  return cells
+    .filter((cell) => {
+      const date = new Date(`${cell.date}T00:00:00Z`);
+      const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      if (date.getUTCDate() > 7 && cell.weekIndex !== 0) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .map((cell) => ({
+      weekIndex: cell.weekIndex,
+      label: formatter.format(new Date(`${cell.date}T00:00:00Z`)),
+    }));
 }
 
 function colorScale(count: number, maxCount: number, lowFill: string, accentFill: string): string {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PieChart,
   Pie,
@@ -27,6 +27,7 @@ interface LanguageDatum {
   name: string;
   value: number;
   color: string;
+  percentage: number;
 }
 
 interface LanguageTooltipProps {
@@ -50,11 +51,22 @@ export function LanguageDonut({ languages, repoMeta, isLoading, error, onRetry }
         name,
         value,
         color: COLORS[index % COLORS.length],
+        percentage: 0,
       }));
   }, [languages]);
 
   const totalBytes = useMemo(() => data.reduce((sum, entry) => sum + entry.value, 0), [data]);
+  const withPercentages = useMemo(
+    () => data.map((entry) => ({ ...entry, percentage: totalBytes > 0 ? (entry.value / totalBytes) * 100 : 0 })),
+    [data, totalBytes],
+  );
   const primaryName = repoMeta?.primaryLanguage ?? data[0]?.name ?? "Mixed";
+
+  useEffect(() => {
+    if (activeIndex >= withPercentages.length) {
+      setActiveIndex(0);
+    }
+  }, [activeIndex, withPercentages.length]);
 
   if (isLoading && !languages) {
     return <LanguageDonutSkeleton />;
@@ -89,13 +101,13 @@ export function LanguageDonut({ languages, repoMeta, isLoading, error, onRetry }
           <div className="absolute inset-x-0 top-[45%] z-10 flex flex-col items-center justify-center text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/55">Primary language</p>
             <p className="mt-2 font-display text-4xl tracking-[-0.04em] text-ink dark:text-paper">{primaryName}</p>
-            <p className="mt-2 text-sm text-muted dark:text-paper/68">{formatNumber(totalBytes)} bytes across {data.length} languages</p>
+            <p className="mt-2 text-sm text-muted dark:text-paper/68">{formatNumber(totalBytes)} bytes across {withPercentages.length} languages</p>
           </div>
 
           <ResponsiveContainer width="100%" height={440}>
             <PieChart>
               <Pie
-                data={data}
+                data={withPercentages}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
@@ -109,7 +121,7 @@ export function LanguageDonut({ languages, repoMeta, isLoading, error, onRetry }
                 animationBegin={120}
                 animationDuration={700}
               >
-                {data.map((entry) => (
+                {withPercentages.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Pie>
@@ -121,23 +133,24 @@ export function LanguageDonut({ languages, repoMeta, isLoading, error, onRetry }
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/55">Legend</p>
           <div className="space-y-3">
-            {data.map((entry) => {
-              const percentage = totalBytes > 0 ? (entry.value / totalBytes) * 100 : 0;
+            {withPercentages.map((entry, index) => {
               return (
                 <button
                   key={entry.name}
                   type="button"
-                  onMouseEnter={() => setActiveIndex(data.findIndex((item) => item.name === entry.name))}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onFocus={() => setActiveIndex(index)}
+                  aria-pressed={activeIndex === index}
                   className={cn(
                     "flex w-full items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-surface-light px-4 py-3 text-left transition-all hover:-translate-y-0.5 dark:border-border-dark dark:bg-paper/5",
-                    activeIndex === data.findIndex((item) => item.name === entry.name) ? "border-accent/50 shadow-md" : "",
+                    activeIndex === index ? "border-accent/50 shadow-md" : "",
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className={cn("size-3 rounded-full", colorClass(entry.color))} />
                     <span className="truncate font-medium text-ink dark:text-paper">{entry.name}</span>
                   </div>
-                  <span className="text-sm text-muted dark:text-paper/65">{percentage.toFixed(1)}%</span>
+                  <span className="text-sm text-muted dark:text-paper/65">{entry.percentage.toFixed(1)}%</span>
                 </button>
               );
             })}
@@ -188,6 +201,7 @@ function LanguageTooltip({ active, payload }: LanguageTooltipProps): React.React
     <div className="rounded-[1.25rem] border border-border bg-paper px-4 py-3 text-sm text-ink shadow-xl dark:border-border-dark dark:bg-surface dark:text-paper">
       <p className="font-medium">{data.name}</p>
       <p className="mt-1 text-muted dark:text-paper/68">{formatNumber(data.value)} bytes</p>
+      <p className="mt-1 text-xs text-muted dark:text-paper/60">{data.percentage.toFixed(1)}% of repository code</p>
     </div>
   );
 }
