@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MoonStar, SunMedium } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -9,6 +10,14 @@ import { cn } from "@/lib/utils";
 export function ThemeToggle(): React.ReactNode {
   const { resolvedTheme, setTheme } = useTheme();
   const transitionTheme = useThemeTransition();
+  const [mounted, setMounted] = useState(false);
+
+  // Only render the theme-aware icon after hydration to avoid a server/client
+  // mismatch — next-themes' resolvedTheme is always undefined on the server.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const currentTheme = resolvedTheme === "dark" ? "dark" : "light";
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
 
@@ -25,7 +34,11 @@ export function ThemeToggle(): React.ReactNode {
       aria-label="Toggle theme"
     >
       <AnimatePresence mode="wait" initial={false}>
-        {currentTheme === "dark" ? (
+        {/* Render a fixed-size invisible placeholder until mounted so the
+            server and client always produce identical HTML. */}
+        {!mounted ? (
+          <span className="inline-flex size-5" aria-hidden="true" />
+        ) : currentTheme === "dark" ? (
           <motion.span
             key="sun"
             initial={{ opacity: 0, rotate: -90, scale: 0.7 }}

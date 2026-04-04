@@ -297,6 +297,13 @@ async function requestContributorStats(owner: string, repo: string, token?: stri
 
 export async function getContributorStats(owner: string, repo: string, token?: string): Promise<Contributor[]> {
   const raw = (await requestContributorStats(owner, repo, token)) as unknown;
+
+  // GitHub returns an empty object {} (not an array) when stats are unavailable
+  // or haven't been computed yet. Treat any non-array response as empty.
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
   const parsed = z.array(githubSchemas.contributor).parse(raw) as GitHubContributorStatsItem[];
   const mapped = parsed.map((entry) => {
     const additions = entry.weeks.reduce((sum, week) => sum + week.a, 0);
