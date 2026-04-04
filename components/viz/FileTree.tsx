@@ -70,10 +70,19 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
     setHoveredNode(null);
   }, [nodes]);
 
+  // Re-run whenever nodes change so the ResizeObserver attaches after the
+  // skeleton phase ends and the real container div becomes available.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) {
       return undefined;
+    }
+
+    // Capture the current dimensions immediately so we don't have to wait
+    // for the first ResizeObserver callback to fire.
+    const rect = container.getBoundingClientRect();
+    if (rect.width > 0) {
+      setSize({ width: rect.width, height: Math.max(640, Math.round(rect.width * 0.84)) });
     }
 
     const observer = new ResizeObserver((entries) => {
@@ -89,7 +98,7 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [nodes]);
 
   const visibleTree = useMemo(() => filterCollapsedTree(nodes ?? [], collapsedPaths), [collapsedPaths, nodes]);
 
