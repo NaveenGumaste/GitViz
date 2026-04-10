@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Sparkles, Info, ArrowUpRight, Orbit, GitBranch } from "lucide-react";
+import { Sparkles, Info, ArrowUpRight, Orbit, GitBranch } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,9 @@ export function FloatingNavbar(): React.ReactNode {
           aria-label="Home"
           className={cn(
             "group relative flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-all hover:bg-accent-muted",
-            activeSection === "home" ? "text-accent" : "text-muted dark:text-paper/70",
+            activeSection === "home"
+              ? "text-accent"
+              : "text-muted dark:text-paper/70",
           )}
         >
           <span className="relative inline-flex">
@@ -96,7 +98,8 @@ export function FloatingNavbar(): React.ReactNode {
         </Link>
 
         {navItems.map((item) => {
-          const isActive = pathname === "/" && activeSection === (item.section ?? "");
+          const isActive =
+            pathname === "/" && activeSection === (item.section ?? "");
 
           return (
             <Link
@@ -110,7 +113,12 @@ export function FloatingNavbar(): React.ReactNode {
             >
               <span className="relative inline-flex">
                 {item.icon}
-                {isActive ? <motion.span layoutId="navbar-dot" className="absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-accent" /> : null}
+                {isActive ? (
+                  <motion.span
+                    layoutId="navbar-dot"
+                    className="absolute -bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-accent"
+                  />
+                ) : null}
               </span>
               <span className="hidden md:inline">{item.label}</span>
             </Link>
