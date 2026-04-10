@@ -5,7 +5,6 @@ import * as d3 from "d3";
 import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { cn, formatBytes } from "@/lib/utils";
 import type { TreeNode } from "@/lib/schemas/github";
 
@@ -57,10 +56,17 @@ const LEGEND = [
   { label: "Other", className: "bg-[#6b6b6b]" },
 ] as const;
 
-export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): React.ReactNode {
+export function FileTree({
+  nodes,
+  isLoading,
+  error,
+  onRetry,
+}: FileTreeProps): React.ReactNode {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const previousPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const previousPositionsRef = useRef<Map<string, { x: number; y: number }>>(
+    new Map(),
+  );
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set());
   const [hoveredNode, setHoveredNode] = useState<HoverState | null>(null);
   const [size, setSize] = useState<TreeSize>({ width: 0, height: 0 });
@@ -82,7 +88,10 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
     // for the first ResizeObserver callback to fire.
     const rect = container.getBoundingClientRect();
     if (rect.width > 0) {
-      setSize({ width: rect.width, height: Math.max(640, Math.round(rect.width * 0.84)) });
+      setSize({
+        width: rect.width,
+        height: Math.max(640, Math.round(rect.width * 0.84)),
+      });
     }
 
     const observer = new ResizeObserver((entries) => {
@@ -100,10 +109,18 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
     return () => observer.disconnect();
   }, [nodes]);
 
-  const visibleTree = useMemo(() => filterCollapsedTree(nodes ?? [], collapsedPaths), [collapsedPaths, nodes]);
+  const visibleTree = useMemo(
+    () => filterCollapsedTree(nodes ?? [], collapsedPaths),
+    [collapsedPaths, nodes],
+  );
 
   useEffect(() => {
-    if (!svgRef.current || !size.width || !size.height || visibleTree.length === 0) {
+    if (
+      !svgRef.current ||
+      !size.width ||
+      !size.height ||
+      visibleTree.length === 0
+    ) {
       return;
     }
 
@@ -131,8 +148,14 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
     cluster(root);
 
     const pointRoot = root as d3.HierarchyPointNode<TreeNode>;
-    const nodeData = pointRoot.descendants().filter((node) => node.depth > 0) as NodeDatum[];
-    const linkData = pointRoot.links().filter((link) => link.target.depth > 0) as d3.HierarchyPointLink<TreeNode>[];
+    const nodeData = pointRoot
+      .descendants()
+      .filter((node) => node.depth > 0) as NodeDatum[];
+    const linkData = pointRoot
+      .links()
+      .filter(
+        (link) => link.target.depth > 0,
+      ) as d3.HierarchyPointLink<TreeNode>[];
 
     const chartRoot = svg
       .selectAll<SVGGElement, null>("g.chart-root")
@@ -167,8 +190,14 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
       .radius((d: NodeDatum) => d.y);
 
     const linkSelection = zoomLayer
-      .selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path.tree-link")
-      .data(linkData, (d: d3.HierarchyPointLink<TreeNode>) => d.target.data.path);
+      .selectAll<
+        SVGPathElement,
+        d3.HierarchyPointLink<TreeNode>
+      >("path.tree-link")
+      .data(
+        linkData,
+        (d: d3.HierarchyPointLink<TreeNode>) => d.target.data.path,
+      );
 
     const linkEnter = linkSelection
       .enter()
@@ -182,7 +211,14 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
       .attr("opacity", 0);
 
     linkEnter
-      .merge(linkSelection as d3.Selection<SVGPathElement, d3.HierarchyPointLink<TreeNode>, SVGGElement, null>)
+      .merge(
+        linkSelection as d3.Selection<
+          SVGPathElement,
+          d3.HierarchyPointLink<TreeNode>,
+          SVGGElement,
+          null
+        >,
+      )
       .transition()
       .duration(300)
       .ease(d3.easeCubicOut)
@@ -199,30 +235,50 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
 
     const nodeSelection = zoomLayer
       .selectAll<SVGGElement, NodeDatum>("g.tree-node")
-      .data(nodeData, (d: NodeDatum) => d.data.path) as d3.Selection<SVGGElement, NodeDatum, SVGGElement, null>;
+      .data(nodeData, (d: NodeDatum) => d.data.path) as d3.Selection<
+      SVGGElement,
+      NodeDatum,
+      SVGGElement,
+      null
+    >;
 
     const nodeEnter = nodeSelection
       .enter()
       .append("g")
       .attr("class", "tree-node")
       .attr("cursor", "pointer")
-      .attr("transform", (d: NodeDatum) => radialTransform(previousPosition(d.data.path, previousPositionsRef.current, d)))
+      .attr("transform", (d: NodeDatum) =>
+        radialTransform(
+          previousPosition(d.data.path, previousPositionsRef.current, d),
+        ),
+      )
       .attr("opacity", 0);
 
     nodeEnter
       .append("circle")
       .attr("r", (d: NodeDatum) => (d.data.kind === "folder" ? 7.5 : 5.5))
       .attr("fill", (d: NodeDatum) => nodeFill(d.data))
-      .attr("stroke", (d: NodeDatum) => (d.data.kind === "folder" ? "#ff4d00" : "rgba(13,13,13,0.2)"))
-      .attr("stroke-width", (d: NodeDatum) => (d.data.kind === "folder" ? 1.5 : 1));
+      .attr("stroke", (d: NodeDatum) =>
+        d.data.kind === "folder" ? "#ff4d00" : "rgba(13,13,13,0.2)",
+      )
+      .attr("stroke-width", (d: NodeDatum) =>
+        d.data.kind === "folder" ? 1.5 : 1,
+      );
 
     nodeEnter
       .append("text")
       .attr("dy", "0.31em")
-      .attr("x", (d: NodeDatum) => ((d.x < Math.PI) === !d.children ? 12 : -12))
-      .attr("text-anchor", (d: NodeDatum) => ((d.x < Math.PI) === !d.children ? "start" : "end"))
-      .attr("transform", (d: NodeDatum) => (d.x >= Math.PI ? "rotate(180)" : null))
-      .attr("class", "fill-ink text-[10px] font-medium tracking-[0.04em] dark:fill-paper")
+      .attr("x", (d: NodeDatum) => (d.x < Math.PI === !d.children ? 12 : -12))
+      .attr("text-anchor", (d: NodeDatum) =>
+        d.x < Math.PI === !d.children ? "start" : "end",
+      )
+      .attr("transform", (d: NodeDatum) =>
+        d.x >= Math.PI ? "rotate(180)" : null,
+      )
+      .attr(
+        "class",
+        "fill-ink text-[10px] font-medium tracking-[0.04em] dark:fill-paper",
+      )
       .text((d: NodeDatum) => d.data.name);
 
     nodeEnter
@@ -258,13 +314,22 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
       .attr("transform", (d: NodeDatum) => radialTransform(d))
       .attr("opacity", 1);
 
-    const nodeExit = nodeSelection.exit() as d3.Selection<SVGGElement, NodeDatum, SVGGElement, null>;
+    const nodeExit = nodeSelection.exit() as d3.Selection<
+      SVGGElement,
+      NodeDatum,
+      SVGGElement,
+      null
+    >;
 
     nodeExit
       .transition()
       .duration(300)
       .ease(d3.easeCubicOut)
-      .attr("transform", (d: NodeDatum) => radialTransform(previousPosition(d.data.path, previousPositionsRef.current, d)))
+      .attr("transform", (d: NodeDatum) =>
+        radialTransform(
+          previousPosition(d.data.path, previousPositionsRef.current, d),
+        ),
+      )
       .attr("opacity", 0)
       .remove();
 
@@ -284,13 +349,24 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
   }
 
   if (error && !nodes) {
-    return <ErrorState title="File tree unavailable" message={error} onRetry={onRetry} variant={error.toLowerCase().includes("rate limit") ? "rate-limit" : "default"} />;
+    return (
+      <ErrorState
+        title="File tree unavailable"
+        message={error}
+        onRetry={onRetry}
+        variant={
+          error.toLowerCase().includes("rate limit") ? "rate-limit" : "default"
+        }
+      />
+    );
   }
 
   if (!nodes || nodes.length === 0) {
     return (
       <Card className="flex min-h-[760px] items-center justify-center">
-        <p className="text-sm text-muted dark:text-paper/65">No tree data is available for this repository yet.</p>
+        <p className="text-sm text-muted dark:text-paper/65">
+          No tree data is available for this repository yet.
+        </p>
       </Card>
     );
   }
@@ -302,22 +378,43 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
 
         {hoveredNode ? (
           <div className="pointer-events-none absolute bottom-4 left-4 max-w-sm rounded-3xl border border-border bg-paper/95 p-4 text-ink shadow-xl backdrop-blur-sm dark:border-border-dark dark:bg-surface/95 dark:text-paper">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/60">Node details</p>
-            <p className="mt-2 font-display text-2xl leading-tight">{hoveredNode.name}</p>
-            <p className="mt-1 break-all text-xs text-muted dark:text-paper/60">{hoveredNode.path}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/60">
+              Node details
+            </p>
+            <p className="mt-2 font-display text-2xl leading-tight">
+              {hoveredNode.name}
+            </p>
+            <p className="mt-1 break-all text-xs text-muted dark:text-paper/60">
+              {hoveredNode.path}
+            </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-accent-muted px-3 py-1 text-accent">{hoveredNode.kind}</span>
-              {hoveredNode.extension ? <span className="rounded-full bg-surface-light px-3 py-1 text-ink dark:bg-paper/10 dark:text-paper">{hoveredNode.extension.toUpperCase()}</span> : null}
-              {typeof hoveredNode.size === "number" ? <span className="rounded-full bg-surface-light px-3 py-1 text-ink dark:bg-paper/10 dark:text-paper">{formatBytes(hoveredNode.size)}</span> : null}
+              <span className="rounded-full bg-accent-muted px-3 py-1 text-accent">
+                {hoveredNode.kind}
+              </span>
+              {hoveredNode.extension ? (
+                <span className="rounded-full bg-surface-light px-3 py-1 text-ink dark:bg-paper/10 dark:text-paper">
+                  {hoveredNode.extension.toUpperCase()}
+                </span>
+              ) : null}
+              {typeof hoveredNode.size === "number" ? (
+                <span className="rounded-full bg-surface-light px-3 py-1 text-ink dark:bg-paper/10 dark:text-paper">
+                  {formatBytes(hoveredNode.size)}
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}
 
         <div className="pointer-events-none absolute bottom-4 right-4 rounded-3xl border border-border bg-paper/90 p-4 shadow-lg backdrop-blur-sm dark:border-border-dark dark:bg-surface/90">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/55">Legend</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted dark:text-paper/55">
+            Legend
+          </p>
           <div className="mt-3 grid gap-2">
             {LEGEND.map((item) => (
-              <div key={item.label} className="flex items-center gap-2 text-sm text-ink dark:text-paper">
+              <div
+                key={item.label}
+                className="flex items-center gap-2 text-sm text-ink dark:text-paper"
+              >
                 <span className={cn("size-3 rounded-full", item.className)} />
                 <span>{item.label}</span>
               </div>
@@ -329,7 +426,10 @@ export function FileTree({ nodes, isLoading, error, onRetry }: FileTreeProps): R
   );
 }
 
-function filterCollapsedTree(nodes: TreeNode[], collapsedPaths: Set<string>): TreeNode[] {
+function filterCollapsedTree(
+  nodes: TreeNode[],
+  collapsedPaths: Set<string>,
+): TreeNode[] {
   return nodes.map((node) => {
     if (node.kind === "file" || !node.children || node.children.length === 0) {
       return node;
@@ -374,7 +474,9 @@ function FileTreeSkeleton(): React.ReactNode {
   return (
     <Card className="flex min-h-[760px] flex-col items-center justify-center gap-4">
       <Loader2 className="size-8 animate-spin text-accent" aria-hidden="true" />
-      <p className="text-sm text-muted dark:text-paper/65">Constructing file tree...</p>
+      <p className="text-sm text-muted dark:text-paper/65">
+        Constructing file tree...
+      </p>
     </Card>
   );
 }
