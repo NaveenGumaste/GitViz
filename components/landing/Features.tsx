@@ -1,66 +1,156 @@
-import { ArrowUpRight, FolderTree, CalendarRange, Users, PieChart } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+"use client";
+
+import { motion } from "framer-motion";
+import {
+  GitBranch,
+  Activity,
+  Users,
+  PieChart,
+  Sparkles,
+  Layers,
+} from "lucide-react";
 
 const features = [
   {
-    number: "01",
-    title: "File Tree Visualization",
-    description: "Explore the repository structure as a radial tree with folder collapse, file detail tooltips, and zoom/pan.",
-    icon: FolderTree,
+    title: "Radial File Explorer",
+    description:
+      "Navigate your repository's architecture through an interactive, zoomable radial tree. See the shape of your codebase instantly.",
+    icon: GitBranch,
+    color: "from-blue-500/20 to-cyan-500/20",
+    iconColor: "text-blue-500 dark:text-blue-400",
   },
   {
-    number: "02",
-    title: "Commit Heatmap",
-    description: "See repository activity evolve over the last 52 weeks with a GitHub-style calendar rendered in D3.",
-    icon: CalendarRange,
+    title: "Commit Rhythm",
+    description:
+      "Understand project momentum with a beautiful commit heatmap. Spot trends, sprints, and quiet periods at a single glance.",
+    icon: Activity,
+    color: "from-accent/20 to-orange-500/20",
+    iconColor: "text-accent",
   },
   {
-    number: "03",
-    title: "Contributor Stats",
-    description: "Compare the most active contributors with animated horizontal bars and richer commit metadata.",
+    title: "Contributor Dynamics",
+    description:
+      "Discover who is driving the project forward. Visual rankings and contribution graphs highlight the team's true heroes.",
     icon: Users,
+    color: "from-emerald-500/20 to-green-500/20",
+    iconColor: "text-emerald-500 dark:text-emerald-400",
   },
   {
-    number: "04",
-    title: "Language Breakdown",
-    description: "Understand the codebase mix at a glance with a donut chart and clear byte distribution legend.",
+    title: "Language Distribution",
+    description:
+      "A clean, editorial breakdown of the languages powering your repository. Know your tech stack composition immediately.",
     icon: PieChart,
+    color: "from-purple-500/20 to-pink-500/20",
+    iconColor: "text-purple-500 dark:text-purple-400",
+  },
+  {
+    title: "Zero Setup Required",
+    description:
+      "No configuration, no installation. Just paste a GitHub URL and watch the visualization unfold in real-time.",
+    icon: Sparkles,
+    color: "from-yellow-500/20 to-amber-500/20",
+    iconColor: "text-yellow-500 dark:text-yellow-400",
+  },
+  {
+    title: "Editorial Design",
+    description:
+      "Built with obsession over typography, contrast, and layout. Data visualization that feels like reading a premium magazine.",
+    icon: Layers,
+    color: "from-rose-500/20 to-red-500/20",
+    iconColor: "text-rose-500 dark:text-rose-400",
   },
 ] as const;
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 80, damping: 20 },
+  },
+};
+
 export function Features(): React.ReactNode {
   return (
-    <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8" id="features">
-      <div className="space-y-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-muted">Features</p>
-        <h2 className="max-w-3xl font-display text-[clamp(2.2rem,4vw,3.8rem)] leading-[0.95] tracking-[-0.05em]">
-          Four ways to understand a repository without opening the code.
-        </h2>
-      </div>
+    <section
+      className="relative overflow-hidden bg-transparent py-24 sm:py-32"
+      id="features"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent,rgba(13,13,13,0.03)_1px,transparent_1px)] bg-[size:100%_4px] dark:bg-[linear-gradient(to_bottom,transparent,rgba(245,240,232,0.04)_1px,transparent_1px)]" />
+      <div className="pointer-events-none absolute right-0 top-0 -mr-40 -mt-40 h-[600px] w-[600px] rounded-full bg-accent/6 blur-[100px] dark:bg-accent/8" />
+      <div className="pointer-events-none absolute bottom-0 left-0 -mb-40 -ml-40 h-[600px] w-[600px] rounded-full bg-blue-500/6 blur-[100px] dark:bg-blue-500/8" />
 
-      <div className="mt-12 grid gap-6 md:grid-cols-2">
-        {features.map((feature) => {
-          const Icon = feature.icon;
+      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7 }}
+          className="mx-auto max-w-2xl text-center"
+        >
+          <p className="inline-flex items-center justify-center rounded-full border border-border/70 bg-paper/80 px-4 py-1.5 text-sm font-semibold tracking-wide text-muted backdrop-blur-sm dark:border-border-dark/70 dark:bg-surface/75 dark:text-paper/65">
+            Everything you need
+          </p>
 
-          return (
-            <Card key={feature.title} className="group relative overflow-hidden p-8">
-              <div className="flex items-start justify-between gap-4">
-                <span className="font-mono text-sm tracking-[0.3em] text-accent/80">{feature.number}</span>
-                <div className="rounded-full border border-border bg-paper p-3 text-ink transition-all duration-300 group-hover:border-accent group-hover:text-accent dark:border-border-dark dark:bg-surface dark:text-paper">
-                  <Icon className="size-5" aria-hidden="true" />
+          <h2 className="mt-6 font-display text-[clamp(2.5rem,5vw,4rem)] font-bold leading-[1.1] tracking-tight text-ink dark:text-paper">
+            Data density without the visual noise.
+          </h2>
+
+          <p className="mt-6 text-lg leading-8 text-muted dark:text-paper/60">
+            We stripped away the clutter of traditional dashboards. What remains
+            is a curated, highly interactive experience designed to give you
+            instant clarity on any codebase.
+          </p>
+        </motion.div>
+
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="mx-auto mt-16 grid max-w-7xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {features.map((feature) => (
+            <motion.div
+              key={feature.title}
+              variants={cardVariants}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className="group relative rounded-3xl border border-border/70 bg-paper/78 p-8 backdrop-blur-md transition-all hover:border-border hover:bg-paper/90 hover:shadow-2xl hover:shadow-black/8 dark:border-border-dark/60 dark:bg-surface/72 dark:hover:border-border-dark dark:hover:bg-surface/86 dark:hover:shadow-black/30"
+            >
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100 dark:from-white/5" />
+
+              <div className="relative">
+                <div
+                  className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.color} ring-1 ring-black/5 dark:ring-white/10`}
+                >
+                  <feature.icon
+                    className={`h-6 w-6 ${feature.iconColor}`}
+                    aria-hidden="true"
+                  />
                 </div>
-              </div>
 
-              <div className="mt-8 space-y-4">
-                <h3 className="max-w-xs font-display text-3xl tracking-[-0.04em]">{feature.title}</h3>
-                <p className="max-w-lg text-sm leading-7 text-muted dark:text-paper/68">{feature.description}</p>
-              </div>
+                <h3 className="mb-3 font-display text-xl font-semibold tracking-tight text-ink dark:text-paper">
+                  {feature.title}
+                </h3>
 
-              <ArrowUpRight className="absolute bottom-6 right-6 size-5 text-accent transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
-              <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(255,77,0,0.08),transparent_35%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            </Card>
-          );
-        })}
+                <p className="text-sm leading-relaxed text-muted dark:text-paper/60">
+                  {feature.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );
